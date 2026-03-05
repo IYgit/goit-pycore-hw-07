@@ -48,12 +48,22 @@ def get_upcoming_birthdays(users: List[dict[str, str]]) -> List[dict[str, str]]:
         # Конвертуємо дату народження із рядка у datetime об'єкт
         birthday_date = datetime.strptime(user["birthday"], "%Y.%m.%d").date()
 
-        # Отримуємо день народження в поточному році
-        birthday_this_year = birthday_date.replace(year=today.year)
+        # Отримуємо день народження в поточному році.
+        # Обробляємо випадок 29 лютого: якщо поточний рік не високосний,
+        # святкування переноситься на 1 березня.
+        try:
+            birthday_this_year = birthday_date.replace(year=today.year)
+        except ValueError:
+            # 29 лютого у не-високосному році → переносимо на 1 березня
+            birthday_this_year = birthday_date.replace(year=today.year, month=3, day=1)
 
         # Якщо день народження вже минув цього року, беремо наступний рік
         if birthday_this_year < today:
-            birthday_this_year = birthday_date.replace(year=today.year + 1)
+            try:
+                birthday_this_year = birthday_date.replace(year=today.year + 1)
+            except ValueError:
+                # 29 лютого у не-високосному наступному році → 1 березня
+                birthday_this_year = birthday_date.replace(year=today.year + 1, month=3, day=1)
 
         # Обчислюємо різницю в днях між днем народження і поточною датою
         days_until_birthday = (birthday_this_year - today).days
@@ -181,5 +191,59 @@ if __name__ == "__main__":
     else:
         print("  Немає днів народження на наступні 7 днів")
 
+    # Приклад 4: Тест з датою народження 29 лютого
+    print("\n" + "-" * 70)
+    print("Приклад 4: День народження 29 лютого (високосна дата)")
+    print("-" * 70)
+
+    leap_users = [
+        {"name": "Василь Стрибок", "birthday": "2000.02.29"},  # реальна дата 29.02
+    ]
+
+    print("\nСписок користувачів:")
+    for user in leap_users:
+        print(f"  - {user['name']}: {user['birthday']}")
+
+    print(f"\nЦей рік ({today.year}) ", end="")
+    import calendar
+    if calendar.isleap(today.year):
+        print("є високосним → привітання 29 лютого")
+    else:
+        print("НЕ є високосним → привітання переноситься на 1 березня")
+
+    upcoming_birthdays = get_upcoming_birthdays(leap_users)
+
+    # Для наочності перевіряємо всі наступні 365 днів, щоб точно знайти дату
+    # (29.02 може не потрапляти в поточні 7 днів, тому покажемо очікувану дату окремо)
+    from datetime import date
+    check_year = today.year
+    try:
+        expected_date = date(check_year, 2, 29)
+    except ValueError:
+        expected_date = date(check_year, 3, 1)
+    if expected_date < today:
+        check_year += 1
+        try:
+            expected_date = date(check_year, 2, 29)
+        except ValueError:
+            expected_date = date(check_year, 3, 1)
+    # Перенесення на понеділок, якщо вихідний
+    if expected_date.weekday() == 5:
+        expected_date += timedelta(days=2)
+    elif expected_date.weekday() == 6:
+        expected_date += timedelta(days=1)
+
+    print(f"Очікувана дата привітання: {expected_date.strftime('%Y.%m.%d')} ({expected_date.strftime('%A')})")
+
+    if upcoming_birthdays:
+        print("\nПривітання потрапило в найближчі 7 днів:")
+        for item in upcoming_birthdays:
+            congrat_date = datetime.strptime(item['congratulation_date'], "%Y.%m.%d").date()
+            print(f"  - {item['name']}: {item['congratulation_date']} ({congrat_date.strftime('%A')})")
+    else:
+        print("  День народження не в найближчі 7 днів.")
+
     print("\n" + "=" * 70)
+
+
 
